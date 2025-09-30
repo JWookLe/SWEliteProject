@@ -3,7 +3,7 @@
 Spring Cloud 기반 MSA 학습을 위한 백엔드 결제 서비스 예제입니다. 전체 아키텍처와 범위, 요구사항, 일정은 [`docs/development-plan.md`](docs/development-plan.md) 문서를 먼저 확인해 주세요.
 
 ## 개발 환경
-- Java 17
+- Java 21
 - Spring Boot 3.3.5
 - Gradle 8.10.2 (Wrapper 분실 시 `gradle wrapper --gradle-version 8.10.2` 실행)
 - H2 인메모리 데이터베이스 (로컬 테스트)
