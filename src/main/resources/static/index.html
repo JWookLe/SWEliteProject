@@ -173,6 +173,7 @@
         font-size: 0.95rem;
         font-family: 'InterVariable', monospace;
         background: #ffffff;
+        color: #111827;
       }
 
       textarea {
@@ -183,6 +184,7 @@
         font-size: 0.95rem;
         font-family: 'InterVariable', 'JetBrains Mono', monospace;
         background: #ffffff;
+        color: #111827;
         resize: vertical;
       }
 
@@ -212,6 +214,32 @@
 
       .send-button:disabled {
         opacity: 0.65;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .secondary-button {
+        align-self: flex-start;
+        background: rgba(79, 70, 229, 0.08);
+        color: #4338ca;
+        border: 1px solid rgba(79, 70, 229, 0.3);
+        border-radius: 999px;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+      }
+
+      .secondary-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(79, 70, 229, 0.18);
+        background: rgba(79, 70, 229, 0.12);
+      }
+
+      .secondary-button:disabled {
+        opacity: 0.5;
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
@@ -265,6 +293,7 @@
         font-size: 0.9rem;
         font-family: 'InterVariable', monospace;
         width: 260px;
+        color: #111827;
       }
 
       @media (max-width: 768px) {
@@ -291,7 +320,7 @@
     </div>
 
     <script type="text/babel">
-      const { useMemo, useState } = React;
+      const { useMemo, useState, useEffect, useRef, useCallback } = React;
 
       const SERVICE_CATALOG = [
         {
@@ -429,14 +458,85 @@
         }
       };
 
-      const EndpointTester = ({ service, endpoint }) => {
-        const [path, setPath] = useState(endpoint.path);
-        const [body, setBody] = useState(prettifyJson(endpoint.sampleBody));
+      const createIdempotencyKey = () => {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+          return `idem-${window.crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
+        }
+        return `idem-${Math.random().toString(36).slice(2, 10)}`;
+      };
+
+      const EndpointTester = ({
+        service,
+        endpoint,
+        defaultPath,
+        defaultBody,
+        contextHint,
+        onSuccess,
+      }) => {
+        const initialPath = defaultPath ?? endpoint.path;
+        const initialBody = prettifyJson(defaultBody ?? endpoint.sampleBody);
+
+        const [path, setPath] = useState(initialPath);
+        const [body, setBody] = useState(initialBody);
         const [loading, setLoading] = useState(false);
         const [response, setResponse] = useState(null);
         const [error, setError] = useState(null);
 
+        const previousDefaultPathRef = useRef(initialPath);
+        const previousDefaultBodyRef = useRef(initialBody);
+
         const isBodyAllowed = endpoint.method !== 'GET' && endpoint.method !== 'DELETE';
+
+        useEffect(() => {
+          const nextDefaultPath = defaultPath ?? endpoint.path;
+          setPath((current) => {
+            if (
+              current === previousDefaultPathRef.current ||
+              current === endpoint.path ||
+              current.includes('{paymentId}')
+            ) {
+              return nextDefaultPath;
+            }
+            return current;
+          });
+          previousDefaultPathRef.current = nextDefaultPath;
+        }, [defaultPath, endpoint.path]);
+
+        useEffect(() => {
+          const nextDefaultBody = prettifyJson(defaultBody ?? endpoint.sampleBody);
+          if (!isBodyAllowed) {
+            previousDefaultBodyRef.current = nextDefaultBody;
+            return;
+          }
+
+          setBody((current) => {
+            if (
+              current === previousDefaultBodyRef.current ||
+              current.trim().length === 0
+            ) {
+              return nextDefaultBody;
+            }
+            return current;
+          });
+          previousDefaultBodyRef.current = nextDefaultBody;
+        }, [defaultBody, endpoint.sampleBody, isBodyAllowed]);
+
+        const handleGenerateIdempotencyKey = () => {
+          const nextKey = createIdempotencyKey();
+          let basePayload = {};
+          if (!isBodyAllowed) {
+            return;
+          }
+          try {
+            basePayload = body.trim().length > 0 ? JSON.parse(body) : endpoint.sampleBody ?? {};
+          } catch (err) {
+            setError('요청 본문이 올바른 JSON 형식이 아니라 멱등키를 갱신할 수 없습니다.');
+            return;
+          }
+          const updatedPayload = { ...basePayload, idempotencyKey: nextKey };
+          setBody(prettifyJson(updatedPayload));
+          setError(null);
+        };
 
         const sendRequest = async () => {
           setLoading(true);
@@ -444,9 +544,11 @@
           setResponse(null);
 
           let parsedBody = null;
+          let requestPayload = null;
           if (isBodyAllowed && body.trim().length > 0) {
             try {
               parsedBody = JSON.parse(body);
+              requestPayload = parsedBody;
             } catch (err) {
               setError('요청 본문이 올바른 JSON 형식이 아닙니다.');
               setLoading(false);
@@ -483,6 +585,14 @@
               ok: result.ok,
               body: parsed,
             });
+
+            if (result.ok && typeof parsed === 'object' && parsed !== null) {
+              onSuccess?.(endpoint, {
+                request: requestPayload,
+                response: parsed,
+                status: result.status,
+              });
+            }
           } catch (err) {
             setError(`요청이 실패했습니다: ${err.message}`);
           } finally {
@@ -521,7 +631,18 @@
               >
                 {loading ? '요청 중…' : '요청 보내기'}
               </button>
+              {endpoint.id === 'authorize' && (
+                <button
+                  className="secondary-button"
+                  onClick={handleGenerateIdempotencyKey}
+                  disabled={loading}
+                  type="button"
+                >
+                  멱등키 새로 생성
+                </button>
+              )}
               {endpoint.notes && <p className="notes">💡 {endpoint.notes}</p>}
+              {contextHint && <p className="notes" style={{ color: '#2563eb' }}>ℹ️ {contextHint}</p>}
               {error && <p className="notes" style={{ color: '#dc2626' }}>⚠️ {error}</p>}
               {response && (
                 <div>
@@ -540,6 +661,7 @@
       const App = () => {
         const [selectedServiceId, setSelectedServiceId] = useState('payment');
         const [overrideBaseUrl, setOverrideBaseUrl] = useState('');
+        const [paymentBookmark, setPaymentBookmark] = useState(null);
 
         const selectedService = useMemo(() => {
           const service = SERVICE_CATALOG.find((service) => service.id === selectedServiceId);
@@ -554,6 +676,72 @@
             baseUrl: overrideBaseUrl.trim().replace(/\/$/, ''),
           };
         }, [selectedServiceId, overrideBaseUrl]);
+
+        const handleEndpointSuccess = useCallback((service, endpoint, payload) => {
+          if (!payload || !payload.response || typeof payload.response !== 'object') {
+            return;
+          }
+          if (!service || service.id !== 'payment') {
+            return;
+          }
+          const { response, request } = payload;
+          if (!response.paymentId) {
+            return;
+          }
+          setPaymentBookmark((previous) => ({
+            paymentId: response.paymentId,
+            merchantId: response.merchantId ?? request?.merchantId ?? previous?.merchantId ?? null,
+            status: response.status ?? previous?.status ?? null,
+          }));
+        }, []);
+
+        const resolveDefaultPath = useCallback((service, endpoint) => {
+          if (!service || service.id !== 'payment' || !paymentBookmark?.paymentId) {
+            return endpoint.path;
+          }
+          if (endpoint.id === 'capture') {
+            return `/payments/capture/${paymentBookmark.paymentId}`;
+          }
+          if (endpoint.id === 'refund') {
+            return `/payments/refund/${paymentBookmark.paymentId}`;
+          }
+          return endpoint.path;
+        }, [paymentBookmark]);
+
+        const resolveDefaultBody = useCallback((service, endpoint) => {
+          if (!service || service.id !== 'payment' || !paymentBookmark) {
+            return endpoint.sampleBody;
+          }
+          if (endpoint.id === 'capture' || endpoint.id === 'refund') {
+            const base = { ...(endpoint.sampleBody ?? {}) };
+            if (paymentBookmark.merchantId) {
+              base.merchantId = paymentBookmark.merchantId;
+            }
+            return base;
+          }
+          return endpoint.sampleBody;
+        }, [paymentBookmark]);
+
+        const resolveContextHint = useCallback((service, endpoint) => {
+          if (!service || service.id !== 'payment' || !paymentBookmark?.paymentId) {
+            return null;
+          }
+          if (endpoint.id === 'authorize') {
+            return paymentBookmark.status
+              ? `최근 승인된 결제 ID ${paymentBookmark.paymentId} (상태: ${paymentBookmark.status})`
+              : `최근 승인된 결제 ID ${paymentBookmark.paymentId}이(가) 있습니다.`;
+          }
+          if (endpoint.id === 'capture') {
+            return `경로가 최근 승인된 결제 ID ${paymentBookmark.paymentId}으로 채워졌습니다.`;
+          }
+          if (endpoint.id === 'refund') {
+            const statusText = paymentBookmark.status ? `현재 상태: ${paymentBookmark.status}` : null;
+            return statusText
+              ? `최근 결제 ID ${paymentBookmark.paymentId}을(를) 활용할 수 있습니다. ${statusText}`
+              : `최근 결제 ID ${paymentBookmark.paymentId}을(를) 활용할 수 있습니다.`;
+          }
+          return null;
+        }, [paymentBookmark]);
 
         return (
           <>
@@ -605,6 +793,12 @@
                       key={endpoint.id}
                       service={selectedService}
                       endpoint={endpoint}
+                      defaultPath={resolveDefaultPath(selectedService, endpoint)}
+                      defaultBody={resolveDefaultBody(selectedService, endpoint)}
+                      contextHint={resolveContextHint(selectedService, endpoint)}
+                      onSuccess={(ep, payload) =>
+                        handleEndpointSuccess(selectedService, ep, payload)
+                      }
                     />
                   ))}
                 </div>

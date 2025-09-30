@@ -37,12 +37,18 @@ public class PaymentCommandService {
 
     @Transactional
     public Payment authorize(String merchantId, long amount, String currency, String idempotencyKey) {
-        paymentRepository.findByMerchantIdAndIdempotencyKey(merchantId, idempotencyKey)
-                .ifPresent(existing -> {
-                    throw new DuplicateRequestException(existing);
-                });
+        String normalizedCurrency = currency.toUpperCase();
 
-        Payment payment = new Payment(merchantId, amount, currency.toUpperCase(), PaymentStatus.REQUESTED, idempotencyKey);
+        var existingPayment = paymentRepository.findByMerchantIdAndIdempotencyKey(merchantId, idempotencyKey);
+        if (existingPayment.isPresent()) {
+            Payment payment = existingPayment.get();
+            if (!payment.getAmount().equals(amount) || !payment.getCurrency().equals(normalizedCurrency)) {
+                throw new DuplicateRequestException(payment, "Idempotency key already used for a different request payload");
+            }
+            return payment;
+        }
+
+        Payment payment = new Payment(merchantId, amount, normalizedCurrency, PaymentStatus.REQUESTED, idempotencyKey);
         payment.markRequested();
         Payment saved = paymentRepository.save(payment);
 
