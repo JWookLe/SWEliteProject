@@ -29,6 +29,14 @@ Wrapper가 생성되면 이후에는 로컬에 Gradle이 설치되어 있지 않
 
 애플리케이션은 H2 인메모리 DB를 사용하며 기본 포트(8080)에서 실행됩니다.
 
+## React 기반 MSA 테스트 콘솔
+백엔드가 실행 중이면 브라우저에서 [`http://localhost:8080/index.html`](http://localhost:8080/index.html)로 이동해
+React로 작성된 "결제 MSA 테스트 콘솔"을 사용할 수 있습니다. API Gateway, Payment, Settlement, Notify 네 가지 서비스를
+카드 형태로 분류하고 있으며 각 카드의 엔드포인트를 선택해 요청 본문을 수정하고 바로 전송할 수 있습니다.
+
+다른 포트에서 마이크로서비스가 실행 중이라면 화면 우측 상단의 "실행 중인 서비스 URL" 입력란에 실제 URL을 입력하면
+해당 주소로 요청을 보낼 수 있습니다. (예: `http://localhost:8082` → Settlement Service)
+
 ## 테스트 실행
 ```bash
 ./gradlew test
