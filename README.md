@@ -1,49 +1,48 @@
 # SWEliteProject
 
-헥토의 "Spring Cloud 모듈을 활용한 MSA 개발" 프로젝트 저장소입니다. 전체 개발 범위, 요구사항, 아키텍처, 일정, 품질 전략 등은 [`docs/development-plan.md`](docs/development-plan.md)에 정리되어 있습니다. 작업을 시작하기 전에 반드시 해당 문서를 확인하세요.
+Spring Cloud 기반 MSA 학습을 위한 백엔드 결제 서비스 예제입니다. 전체 아키텍처와 범위, 요구사항, 일정은 [`docs/development-plan.md`](docs/development-plan.md) 문서를 먼저 확인해 주세요.
 
-## Payment 서비스 (초기 버전)
+## 개발 환경
+- Java 17
+- Spring Boot 3.3.5
+- Gradle 8.10.2 (Wrapper 분실 시 `gradle wrapper --gradle-version 8.10.2` 실행)
+- H2 인메모리 데이터베이스 (로컬 테스트)
 
-### 로컬 실행
+## Gradle 초기 설정
+프로젝트에는 `build.gradle`, `settings.gradle`, `gradle/wrapper/gradle-wrapper.properties`가 추가되었습니다. 최초 1회 Gradle이 설치된 환경에서 아래 명령을 실행해 Wrapper JAR(`gradle/wrapper/gradle-wrapper.jar`)와 스크립트(`gradlew`, `gradlew.bat`)를 생성해 주세요.
 
 ```bash
-mvn spring-boot:run
+# macOS / Linux / WSL
+gradle wrapper --gradle-version 8.10.2
+
+# Windows PowerShell
+gradle wrapper --gradle-version 8.10.2
 ```
 
-### 테스트 실행
+Wrapper가 생성되면 이후에는 로컬에 Gradle이 설치되어 있지 않아도 `./gradlew` 또는 `gradlew.bat`를 사용해 빌드할 수 있습니다.
 
+## 로컬 실행
 ```bash
-mvn test
+./gradlew bootRun              # macOS / Linux / WSL
+./gradlew.bat bootRun          # Windows
 ```
 
-### GitHub에 코드가 보이지 않을 때
+애플리케이션은 H2 인메모리 DB를 사용하며 기본 포트(8080)에서 실행됩니다.
 
-이 저장소는 기본적으로 로컬 브랜치(`main`)만 존재합니다. 아직 원격 저장소가
-연결되지 않았다면 GitHub에는 커밋이 올라가지 않습니다. 아래 절차를 따라
-원격 저장소를 추가하고 최신 커밋을 푸시하세요.
+## 테스트 실행
+```bash
+./gradlew test
+./gradlew.bat test
+```
 
-1. GitHub에서 비어 있는 저장소를 생성합니다. 예: `https://github.com/<org>/SWEliteProject.git`
-2. 원격을 등록합니다.
-
-   ```bash
-   git remote add origin https://github.com/<org>/SWEliteProject.git
-   ```
-
-3. 현재 브랜치를 GitHub로 푸시합니다.
-
-   ```bash
-   git push -u origin main
-   ```
-
-4. GitHub에서 코드가 올라갔는지 확인합니다. 다른 브랜치 이름을 사용했다면
-   위 명령의 `main` 부분을 해당 브랜치명으로 변경하세요.
-
-### 주요 엔드포인트
-
+## 주요 API
 | 메서드 | 경로 | 설명 |
 | --- | --- | --- |
-| `POST` | `/payments/authorize` | 결제 승인 요청 (멱등성 키로 중복 방지) |
+| `POST` | `/payments/authorize` | 결제 승인 요청 (멱등키로 중복 방지) |
 | `POST` | `/payments/capture/{paymentId}` | 승인 건 매입 처리 |
 | `POST` | `/payments/refund/{paymentId}` | 매입 완료 건 환불 |
 
-각 API의 요청/응답 스키마는 향후 OpenAPI 문서로 제공될 예정입니다. 현재는 `src/test/java/com/hecto/payments/paymentservice/PaymentControllerTest.java`를 참고하세요.
+요청/응답 JSON 스키마는 `src/test/java/com/hecto/payments/paymentservice/PaymentControllerTest.java`의 테스트 케이스를 참고하세요.
+
+## 참고: 문서
+- `docs/development-plan.md`: 전체 개발 계획, 일정, 시스템 구성 개요
