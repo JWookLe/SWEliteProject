@@ -705,19 +705,23 @@
 
         const overrideBaseUrl = serviceOverrides[selectedServiceId] ?? '';
 
+        const selectedServiceDefinition = useMemo(
+          () => SERVICE_CATALOG.find((service) => service.id === selectedServiceId) ?? null,
+          [selectedServiceId],
+        );
+
         const selectedService = useMemo(() => {
-          const service = SERVICE_CATALOG.find((service) => service.id === selectedServiceId);
-          if (!service) {
+          if (!selectedServiceDefinition) {
             return null;
           }
           if (!overrideBaseUrl || !overrideBaseUrl.trim()) {
-            return service;
+            return selectedServiceDefinition;
           }
           return {
-            ...service,
+            ...selectedServiceDefinition,
             baseUrl: overrideBaseUrl.trim().replace(/\/$/, ''),
           };
-        }, [selectedServiceId, overrideBaseUrl]);
+        }, [overrideBaseUrl, selectedServiceDefinition]);
 
         const handleEndpointSuccess = useCallback((service, endpoint, payload) => {
           if (!payload || !payload.response || typeof payload.response !== 'object') {
@@ -815,7 +819,7 @@
               ))}
             </section>
 
-            {selectedService && (
+            {selectedService && selectedServiceDefinition && (
               <section className="panel" aria-live="polite">
                 <div className="env-bar">
                   <h3>{selectedService.name} 엔드포인트 테스트</h3>
@@ -829,14 +833,14 @@
                         setServiceOverrides((previous) => {
                           const next = { ...previous };
                           if (!value || !value.trim()) {
-                            delete next[selectedService.id];
+                            delete next[selectedServiceDefinition.id];
                             return next;
                           }
-                          next[selectedService.id] = value;
+                          next[selectedServiceDefinition.id] = value;
                           return next;
                         });
                       }}
-                      placeholder={`${selectedService.baseUrl}`}
+                      placeholder={`${selectedServiceDefinition.baseUrl}`}
                     />
                   </label>
                 </div>
