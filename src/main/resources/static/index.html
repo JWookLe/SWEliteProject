@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>결제 MSA 테스트 콘솔</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.1/variable.css"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: 'InterVariable', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          sans-serif;
+        background-color: #f5f7fb;
+        color: #1f2937;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      }
+
+      .app-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 3rem 1.5rem 4rem;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #111827;
+      }
+
+      header p {
+        margin: 0.75rem auto 0;
+        max-width: 720px;
+        line-height: 1.6;
+        color: #4b5563;
+      }
+
+      .service-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        margin-bottom: 2.5rem;
+      }
+
+      .service-card {
+        border-radius: 16px;
+        border: 1px solid rgba(99, 102, 241, 0.12);
+        background-color: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 16px 40px rgba(79, 70, 229, 0.08);
+        transition: transform 150ms ease, box-shadow 150ms ease;
+        padding: 1.75rem;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .service-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 45px rgba(79, 70, 229, 0.12);
+      }
+
+      .service-card.active {
+        border-color: rgba(79, 70, 229, 0.5);
+        box-shadow: 0 20px 45px rgba(79, 70, 229, 0.16);
+      }
+
+      .service-card h2 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #1f2937;
+      }
+
+      .service-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        color: #6366f1;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .service-description {
+        margin: 0;
+        color: #4b5563;
+        line-height: 1.6;
+        flex-grow: 1;
+      }
+
+      .service-upstream {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #6b7280;
+      }
+
+      .panel {
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
+        padding: 2rem;
+      }
+
+      .panel h3 {
+        margin-top: 0;
+        font-size: 1.5rem;
+        color: #111827;
+      }
+
+      .endpoints {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .endpoint-card {
+        border-radius: 14px;
+        border: 1px solid rgba(99, 102, 241, 0.16);
+        padding: 1.5rem;
+        background: rgba(249, 250, 251, 0.75);
+        display: grid;
+        gap: 1rem;
+      }
+
+      .endpoint-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .badge.method {
+        background: rgba(59, 130, 246, 0.15);
+        color: #1d4ed8;
+      }
+
+      .badge.scope {
+        background: rgba(16, 185, 129, 0.15);
+        color: #047857;
+      }
+
+      .path-input {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        padding: 0.65rem 0.9rem;
+        font-size: 0.95rem;
+        font-family: 'InterVariable', monospace;
+        background: #ffffff;
+      }
+
+      textarea {
+        min-height: 140px;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        padding: 0.9rem 1rem;
+        font-size: 0.95rem;
+        font-family: 'InterVariable', 'JetBrains Mono', monospace;
+        background: #ffffff;
+        resize: vertical;
+      }
+
+      .endpoint-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .send-button {
+        align-self: flex-start;
+        background: linear-gradient(135deg, #4f46e5, #9333ea);
+        color: white;
+        border: none;
+        border-radius: 999px;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+      }
+
+      .send-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 25px rgba(79, 70, 229, 0.3);
+      }
+
+      .send-button:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .status-line {
+        font-family: 'InterVariable', monospace;
+        font-size: 0.9rem;
+        color: #1f2937;
+      }
+
+      .response-viewer {
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 1rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .notes {
+        margin: 0;
+        color: #6b7280;
+        font-size: 0.85rem;
+      }
+
+      .env-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .env-bar label {
+        font-size: 0.9rem;
+        color: #4b5563;
+        font-weight: 600;
+      }
+
+      .env-input {
+        padding: 0.5rem 0.75rem;
+        border-radius: 10px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        background: white;
+        font-size: 0.9rem;
+        font-family: 'InterVariable', monospace;
+        width: 260px;
+      }
+
+      @media (max-width: 768px) {
+        .app-container {
+          padding: 2.5rem 1.25rem 3rem;
+        }
+
+        header h1 {
+          font-size: 2rem;
+        }
+
+        .panel {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div class="app-container">
+      <div id="root"></div>
+    </div>
+
+    <script type="text/babel">
+      const { useMemo, useState } = React;
+
+      const SERVICE_CATALOG = [
+        {
+          id: 'gateway',
+          name: 'API Gateway',
+          domain: 'edge-service',
+          baseUrl: 'http://localhost:8080',
+          description:
+            '외부 트래픽을 라우팅하고 공통 인증/로깅을 담당하는 진입점입니다. 각 마이크로서비스의 헬스 체크와 SLA를 한 화면에서 모니터링할 수 있습니다.',
+          upstream: 'Routes → Payment Service, Settlement Service, Notification Service',
+          endpoints: [
+            {
+              id: 'gateway-health',
+              label: '게이트웨이 상태',
+              method: 'GET',
+              path: '/actuator/health',
+              scope: 'Observability',
+              sampleBody: null,
+              notes:
+                'Spring Boot Actuator가 활성화되어 있다면 게이트웨이의 상태를 즉시 확인할 수 있습니다.',
+            },
+          ],
+        },
+        {
+          id: 'payment',
+          name: 'Payment Service',
+          domain: 'core-ledger',
+          baseUrl: 'http://localhost:8080',
+          description:
+            '승인/매입/환불 트랜잭션을 담당하는 결제 핵심 서비스입니다. Outbox 패턴으로 이벤트를 발행하여 후속 서비스와 연동합니다.',
+          upstream: 'Publishes Kafka → Settlement Service, Notify Service',
+          endpoints: [
+            {
+              id: 'authorize',
+              label: '결제 승인',
+              method: 'POST',
+              path: '/payments/authorize',
+              scope: 'Command',
+              sampleBody: {
+                merchantId: 'M100',
+                amount: 10000,
+                currency: 'KRW',
+                idempotencyKey: 'idem-001',
+              },
+              notes:
+                '멱등키(idempotencyKey)를 변경하면서 여러 번 호출하여 중복 방지 로직을 검증해 보세요.',
+            },
+            {
+              id: 'capture',
+              label: '결제 매입',
+              method: 'POST',
+              path: '/payments/capture/{paymentId}',
+              scope: 'Command',
+              sampleBody: {
+                merchantId: 'M100',
+              },
+              notes:
+                '매입 시 {paymentId} 경로 파라미터를 승인 응답에서 받은 값으로 바꿔야 합니다.',
+            },
+            {
+              id: 'refund',
+              label: '결제 환불',
+              method: 'POST',
+              path: '/payments/refund/{paymentId}',
+              scope: 'Command',
+              sampleBody: {
+                merchantId: 'M100',
+                reason: 'customer cancellation',
+              },
+              notes:
+                '환불은 매입이 완료된 건에 대해서만 성공합니다. 사유(reason)를 자유롭게 적어보세요.',
+            },
+          ],
+        },
+        {
+          id: 'settlement',
+          name: 'Settlement Service',
+          domain: 'batch-ops',
+          baseUrl: 'http://localhost:8082',
+          description:
+            '매입 완료 건을 일별로 집계하여 가맹점 정산 데이터를 생성합니다. 비동기 이벤트를 수신해 배치로 데이터를 적재합니다.',
+          upstream: 'Consumes Kafka ← payment.captured',
+          endpoints: [
+            {
+              id: 'settlement-health',
+              label: '정산 배치 상태',
+              method: 'GET',
+              path: '/actuator/health',
+              scope: 'Observability',
+              sampleBody: null,
+              notes:
+                '정산 서비스가 별도 포트(예: 8082)에서 실행 중인지 확인하기 위한 헬스 체크입니다.',
+            },
+          ],
+        },
+        {
+          id: 'notify',
+          name: 'Notify Service',
+          domain: 'messaging',
+          baseUrl: 'http://localhost:8083',
+          description:
+            '고객 및 상점에게 알림을 전송하는 비동기 서비스입니다. Kafka DLQ를 감시하고 재처리를 제공합니다.',
+          upstream: 'Consumes Kafka ← payment.refunded',
+          endpoints: [
+            {
+              id: 'notify-preview',
+              label: '알림 미리보기',
+              method: 'POST',
+              path: '/notifications/preview',
+              scope: 'Utility',
+              sampleBody: {
+                channel: 'EMAIL',
+                templateId: 'refund-complete',
+                payload: {
+                  merchantName: 'Sample Shop',
+                  amount: 15000,
+                  currency: 'KRW',
+                },
+              },
+              notes:
+                '아직 백엔드가 준비되지 않았다면 이 요청은 실패할 수 있습니다. 구조만 빠르게 확인해 보세요.',
+            },
+          ],
+        },
+      ];
+
+      const prettifyJson = (value) => {
+        if (value === null || value === undefined || value === '') {
+          return '';
+        }
+        try {
+          return JSON.stringify(typeof value === 'string' ? JSON.parse(value) : value, null, 2);
+        } catch (err) {
+          return typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+        }
+      };
+
+      const EndpointTester = ({ service, endpoint }) => {
+        const [path, setPath] = useState(endpoint.path);
+        const [body, setBody] = useState(prettifyJson(endpoint.sampleBody));
+        const [loading, setLoading] = useState(false);
+        const [response, setResponse] = useState(null);
+        const [error, setError] = useState(null);
+
+        const isBodyAllowed = endpoint.method !== 'GET' && endpoint.method !== 'DELETE';
+
+        const sendRequest = async () => {
+          setLoading(true);
+          setError(null);
+          setResponse(null);
+
+          let parsedBody = null;
+          if (isBodyAllowed && body.trim().length > 0) {
+            try {
+              parsedBody = JSON.parse(body);
+            } catch (err) {
+              setError('요청 본문이 올바른 JSON 형식이 아닙니다.');
+              setLoading(false);
+              return;
+            }
+          }
+
+          try {
+            const fetchOptions = {
+              method: endpoint.method,
+              headers: {},
+            };
+
+            if (isBodyAllowed) {
+              fetchOptions.headers['Content-Type'] = 'application/json';
+              fetchOptions.body = parsedBody ? JSON.stringify(parsedBody) : '{}';
+            }
+
+            const url = `${service.baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+            const result = await fetch(url, fetchOptions);
+            const contentType = result.headers.get('content-type') ?? '';
+            const rawText = await result.text();
+            let parsed = rawText;
+            if (contentType.includes('application/json')) {
+              try {
+                parsed = JSON.parse(rawText);
+              } catch (err) {
+                parsed = rawText;
+              }
+            }
+
+            setResponse({
+              status: `${result.status} ${result.statusText}`,
+              ok: result.ok,
+              body: parsed,
+            });
+          } catch (err) {
+            setError(`요청이 실패했습니다: ${err.message}`);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <div className="endpoint-card">
+            <div className="endpoint-header">
+              <span className="badge method">{endpoint.method}</span>
+              <span className="badge scope">{endpoint.scope}</span>
+              <strong>{endpoint.label}</strong>
+            </div>
+            <input
+              className="path-input"
+              value={path}
+              onChange={(event) => setPath(event.target.value)}
+              placeholder="/payments/..."
+              aria-label="요청 경로"
+            />
+            {isBodyAllowed && (
+              <textarea
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                spellCheck={false}
+                aria-label="요청 본문"
+              />
+            )}
+            <div className="endpoint-footer">
+              <button
+                className="send-button"
+                onClick={sendRequest}
+                disabled={loading}
+                type="button"
+              >
+                {loading ? '요청 중…' : '요청 보내기'}
+              </button>
+              {endpoint.notes && <p className="notes">💡 {endpoint.notes}</p>}
+              {error && <p className="notes" style={{ color: '#dc2626' }}>⚠️ {error}</p>}
+              {response && (
+                <div>
+                  <div className="status-line">
+                    응답 상태: <strong>{response.status}</strong>{' '}
+                    {response.ok ? '✅' : '❌'}
+                  </div>
+                  <pre className="response-viewer">{prettifyJson(response.body)}</pre>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const App = () => {
+        const [selectedServiceId, setSelectedServiceId] = useState('payment');
+        const [overrideBaseUrl, setOverrideBaseUrl] = useState('');
+
+        const selectedService = useMemo(() => {
+          const service = SERVICE_CATALOG.find((service) => service.id === selectedServiceId);
+          if (!service) {
+            return null;
+          }
+          if (!overrideBaseUrl.trim()) {
+            return service;
+          }
+          return {
+            ...service,
+            baseUrl: overrideBaseUrl.trim().replace(/\/$/, ''),
+          };
+        }, [selectedServiceId, overrideBaseUrl]);
+
+        return (
+          <>
+            <header>
+              <h1>결제 MSA 테스트 콘솔</h1>
+              <p>
+                Gradle로 실행한 백엔드 마이크로서비스들을 손쉽게 점검하기 위한 React 기반 툴입니다.
+                서비스 카드를 선택하고 각 엔드포인트를 호출해 보세요.
+              </p>
+            </header>
+
+            <section className="service-grid">
+              {SERVICE_CATALOG.map((service) => (
+                <article
+                  key={service.id}
+                  className={`service-card ${selectedServiceId === service.id ? 'active' : ''}`}
+                  onClick={() => setSelectedServiceId(service.id)}
+                >
+                  <div className="service-meta">
+                    <span>{service.domain}</span>
+                  </div>
+                  <h2>{service.name}</h2>
+                  <p className="service-description">{service.description}</p>
+                  <p className="service-upstream">{service.upstream}</p>
+                  <p className="service-upstream" style={{ fontWeight: 600 }}>
+                    기본 URL: {service.baseUrl}
+                  </p>
+                </article>
+              ))}
+            </section>
+
+            {selectedService && (
+              <section className="panel" aria-live="polite">
+                <div className="env-bar">
+                  <h3>{selectedService.name} 엔드포인트 테스트</h3>
+                  <label>
+                    실행 중인 서비스 URL
+                    <input
+                      className="env-input"
+                      value={overrideBaseUrl}
+                      onChange={(event) => setOverrideBaseUrl(event.target.value)}
+                      placeholder={`${selectedService.baseUrl}`}
+                    />
+                  </label>
+                </div>
+                <div className="endpoints">
+                  {selectedService.endpoints.map((endpoint) => (
+                    <EndpointTester
+                      key={endpoint.id}
+                      service={selectedService}
+                      endpoint={endpoint}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
