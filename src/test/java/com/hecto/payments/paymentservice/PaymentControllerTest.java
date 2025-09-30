@@ -36,38 +36,16 @@ class PaymentControllerTest {
     }
 
     @Test
-    void duplicateAuthorizationReturnsExistingPayment() throws Exception {
+    void duplicateAuthorizationReturnsConflict() throws Exception {
         var request = new AuthorizeRequest("M101", 5_000L, "KRW", "dup-key");
-        var firstResponse = mockMvc.perform(post("/payments/authorize")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        long paymentId = objectMapper.readTree(firstResponse.getResponse().getContentAsString())
-                .get("paymentId")
-                .asLong();
-
         mockMvc.perform(post("/payments/authorize")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paymentId").value(paymentId))
-                .andExpect(jsonPath("$.status").value("REQUESTED"));
-    }
-
-    @Test
-    void duplicateAuthorizationWithDifferentPayloadReturnsConflict() throws Exception {
-        var originalRequest = new AuthorizeRequest("M101", 5_000L, "KRW", "dup-mismatch");
-        mockMvc.perform(post("/payments/authorize")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(originalRequest)))
                 .andExpect(status().isOk());
 
-        var conflictingRequest = new AuthorizeRequest("M101", 9_000L, "KRW", "dup-mismatch");
         mockMvc.perform(post("/payments/authorize")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(conflictingRequest)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("DUPLICATE_REQUEST"))
                 .andExpect(jsonPath("$.paymentId").isNumber());

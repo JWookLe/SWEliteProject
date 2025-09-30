@@ -15,7 +15,6 @@ import com.hecto.payments.paymentservice.repository.OutboxEventRepository;
 import com.hecto.payments.paymentservice.repository.PaymentRepository;
 import jakarta.transaction.Transactional;
 import java.util.Map;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -38,41 +37,23 @@ public class PaymentCommandService {
 
     @Transactional
     public Payment authorize(String merchantId, long amount, String currency, String idempotencyKey) {
-        String normalizedCurrency = currency.toUpperCase();
+        paymentRepository.findByMerchantIdAndIdempotencyKey(merchantId, idempotencyKey)
+                .ifPresent(existing -> {
+                    throw new DuplicateRequestException(existing);
+                });
 
-        var existingPayment = paymentRepository.findByMerchantIdAndIdempotencyKey(merchantId, idempotencyKey);
-        if (existingPayment.isPresent()) {
-            Payment payment = existingPayment.get();
-            if (!payment.getAmount().equals(amount) || !payment.getCurrency().equals(normalizedCurrency)) {
-                throw new DuplicateRequestException(payment, "Idempotency key already used for a different request payload");
-            }
-            return payment;
-        }
-
-        Payment payment = new Payment(merchantId, amount, normalizedCurrency, PaymentStatus.REQUESTED, idempotencyKey);
+        Payment payment = new Payment(merchantId, amount, currency.toUpperCase(), PaymentStatus.REQUESTED, idempotencyKey);
         payment.markRequested();
+        Payment saved = paymentRepository.save(payment);
 
-        try {
-            Payment saved = paymentRepository.save(payment);
-
-            recordEvent(saved, "PAYMENT_AUTHORIZED", Map.of(
-                    "paymentId", saved.getId(),
-                    "merchantId", saved.getMerchantId(),
-                    "amount", saved.getAmount(),
-                    "currency", saved.getCurrency(),
-                    "status", saved.getStatus().name()
-            ));
-            return saved;
-        } catch (DataIntegrityViolationException ex) {
-            Payment existing = paymentRepository.findByMerchantIdAndIdempotencyKey(merchantId, idempotencyKey)
-                    .orElseThrow(() -> ex);
-
-            if (!existing.getAmount().equals(amount) || !existing.getCurrency().equals(normalizedCurrency)) {
-                throw new DuplicateRequestException(existing, "Idempotency key already used for a different request payload");
-            }
-
-            return existing;
-        }
+        recordEvent(saved, "PAYMENT_AUTHORIZED", Map.of(
+                "paymentId", saved.getId(),
+                "merchantId", saved.getMerchantId(),
+                "amount", saved.getAmount(),
+                "currency", saved.getCurrency(),
+                "status", saved.getStatus().name()
+        ));
+        return saved;
     }
 
     @Transactional

@@ -6,11 +6,7 @@ public class DuplicateRequestException extends RuntimeException {
     private final Payment existingPayment;
 
     public DuplicateRequestException(Payment existingPayment) {
-        this(existingPayment, "Idempotency key already used");
-    }
-
-    public DuplicateRequestException(Payment existingPayment, String message) {
-        super(message);
+        super("Idempotency key already used");
         this.existingPayment = existingPayment;
     }
 
